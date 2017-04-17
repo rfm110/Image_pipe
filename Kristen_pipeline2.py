@@ -6,7 +6,7 @@ from csv import writer as csv_writer
 import debug_renders as dbg
 import numpy as np
 from time import time
-
+# TODO: Delete this pipeline when it is confirmed that it is no longer needed
 # Goal of this pipeline
 #     1. Detect the number of cells that were properly stained
 #     2. For the successfully stained cells, determine how much GFP is located inside the mitochondria
