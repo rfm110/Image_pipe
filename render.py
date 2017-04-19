@@ -8,7 +8,8 @@ from scipy import ndimage as ndi
 from scipy import stats
 import density_plot as dplt
 import core_functions as cf
-
+from chiffatools.dataviz import better2D_desisty_plot
+from scipy.stats import linregress
 
 
 @generator_wrapper(in_dims=(None, 2, 2, 2, 2, 1, 1, None, None, 2, 2), out_dims=(None,))
@@ -36,7 +37,7 @@ def linhao_gfp_render(name_pattern, proj_gfp, qual_gfp, cell_labels, average_gfp
 
     ax = plt.subplot(244, sharex=main_ax, sharey=main_ax)
     plt.imshow(cell_labels, cmap=plt.cm.spectral, interpolation='nearest')
-    unique = np.unique(cell_labels)
+    unique = np.sort(np.unique(cell_labels))[1:]
     for i in unique:
         mask = cell_labels == i
         x, y = scipy.ndimage.measurements.center_of_mass(mask)
@@ -225,11 +226,79 @@ def akshay_render(name_pattern, DAPI, p53, p21,
     plt.colorbar(im)
     plt.contour(nuclei, [0.5], colors='b')
     plt.contour(extra_nuclear_p21, [0.5], colors='g')
+
     if not save:
         plt.show()
 
     else:
         name_puck = directory_to_save_to+'/'+'akshay-'+name_pattern+'.png'
+        plt.savefig(name_puck)
+        plt.close()
+
+
+@generator_wrapper(in_dims=(None, 2, 2, 2, 2, 2, 3, 3, None), out_dims=(None,))
+def xi_pre_render(name_pattern, proj_gfp, qual_gfp, cell_labels, average_gfp_pad, proj_mch,
+                  mch, gfp, timestamp,
+                  save=False, directory_to_save_to='verification', mch_cutoff=0.2, slector_cutoff=0.1):
+
+    plt.figure(figsize=(20, 15))
+
+    plt.suptitle(name_pattern)
+
+    main_ax = plt.subplot(231)
+    plt.title('GFP')
+    plt.imshow(proj_gfp, interpolation='nearest')
+    plt.contour(cell_labels > 0, [0.5], colors='w')
+
+    plt.subplot(232, sharex=main_ax, sharey=main_ax)
+    plt.title('log-GFP')
+    plt.imshow(np.log(proj_gfp + np.min(proj_gfp[proj_gfp > 0])), cmap='hot', interpolation='nearest')
+    plt.contour(cell_labels > 0, [0.5], colors='w')
+
+    plt.subplot(233, sharex=main_ax, sharey=main_ax)
+    plt.title('raw segmentation')
+    plt.imshow(qual_gfp, cmap='gray', interpolation='nearest')
+    plt.contour(cell_labels > 0, [0.5], colors='w')
+
+    ax = plt.subplot(234, sharex=main_ax, sharey=main_ax)
+    plt.title('labeled segmentation')
+    plt.imshow(cell_labels, cmap=plt.cm.spectral, interpolation='nearest')
+    unique = np.unique(cell_labels)
+    for i in unique:
+        mask = cell_labels == i
+        x, y = scipy.ndimage.measurements.center_of_mass(mask)
+        ax.text(y-8, x+8, '%s' % i, fontsize=10)
+
+    plt.subplot(235)
+    selector = np.logical_and(mch > slector_cutoff, gfp > slector_cutoff)
+    plt.title('mCh-GFP correlation - %s, qual GFP intensity: %s' %
+              (np.corrcoef(mch[selector], gfp[selector])[0, 1], np.median(gfp[mch > mch_cutoff])))
+    slope, intercept, rvalue, pvalue, stderr = linregress(mch[selector], gfp[selector])
+    better2D_desisty_plot(mch[selector], gfp[selector])
+    linarray = np.arange(0.1, 0.5, 0.05)
+    plt.plot(linarray, intercept+slope*linarray, 'r')
+    plt.xlabel('mCherry')
+    plt.ylabel('GFP')
+
+    plt.subplot(236, sharex=main_ax, sharey=main_ax)
+    plt.title('mCherry')
+    plt.imshow(proj_mch, interpolation='nearest')
+    plt.contour(cell_labels > 0, [0.5], colors='w')
+
+    with open('xi_analys_results.csv', 'ab') as output_file:
+        writer = csv_writer(output_file)
+
+        puck = [name_pattern, timestamp,
+                np.corrcoef(mch[selector], gfp[selector])[0, 1],
+                np.median(gfp[mch > mch_cutoff]), np.average(gfp[mch > mch_cutoff]),
+                slope, rvalue, pvalue]
+        writer.writerow(puck)
+
+    if not save:
+        plt.show()
+
+    else:
+        name_puck = directory_to_save_to+'/'+'xi_pre_render-'+timestamp+'-'+name_pattern+'.png'
         plt.savefig(name_puck)
         plt.close()
 
