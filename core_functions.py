@@ -26,7 +26,6 @@ import collections
 import debug_renders as dbg
 
 
-
 dtype2bits = {'uint8': 8,
               'uint16': 16,
               'uint32': 32}
@@ -154,7 +153,6 @@ def generator_wrapper(f, in_dims=(3,), out_dims=None):
                         print chan, len(name_space[chan].shape), in_dims[i]
                         raise PipeArgError('Mismatched inbound channel dimension for channel. %s is of dim %s, expected %s'%
                                            (chan, len(name_space[chan].shape), in_dims[i]))
-
                     args_puck.append(name_space[chan])
 
                 local_args = tuple(args_puck) + args
@@ -400,13 +398,16 @@ def robust_binarize(base_image, _dilation=0, heterogeity_size=10, feature_size=5
 
 
     clustering_markers = np.zeros(base_image.shape, dtype=np.uint8)
+
     selem = disk(heterogeity_size)
     smooth = gaussian_filter(base_image, heterogeity_size, mode='constant')
     smooth_median = median(smooth, selem)
     uniform_median = median(base_image, selem)
+
     selem2 = disk(feature_size)
     local_otsu = rank.otsu(smooth_median, selem2)
     uniform_median_otsu = rank.otsu(uniform_median, selem2)
+
     clustering_markers[smooth_median < local_otsu * 0.9] = 1
     clustering_markers[smooth_median > local_otsu * 1.1] = 2
 
@@ -424,7 +425,7 @@ def robust_binarize(base_image, _dilation=0, heterogeity_size=10, feature_size=5
     # dbg.robust_binarize_debug(binary_labels, base_image)
 
 
-        # dbg.voronoi_debug(binary_labels, local_maxi, dist, segmented_cells_labels)
+    # dbg.voronoi_debug(binary_labels, local_maxi, dist, segmented_cells_labels)
     # dbg.Kristen_robust_binarize(binary_labels, base_image)
     return binary_labels
 
@@ -513,8 +514,8 @@ def in_contact(mask1, mask2, distance=10):
     return in_contact1, in_contact2
 
 
-@generator_wrapper(in_dims=(2,2), out_dims=(2,))
-def improved_watershed(binary_base, intensity):
+@generator_wrapper(in_dims=(2, 2), out_dims=(2,))
+def improved_watershed(binary_base, intensity, expected_separation=10):
     sel_elem = disk(2)
 
     # changed variable name for "labels"
@@ -523,7 +524,7 @@ def improved_watershed(binary_base, intensity):
     distance = ndi.distance_transform_edt(post_closing_labels)
     local_maxi = peak_local_max(distance,
                                 indices=False,  # we want the image mask, not peak position
-                                min_distance=10,  # about half of a bud with our size
+                                min_distance=expected_separation,  # about half of a bud with our size
                                 threshold_abs=10,  # allows to clear the noise
                                 labels=post_closing_labels)
     # we fuse the labels that are close together that escaped the min distance in local_maxi
@@ -755,6 +756,7 @@ def classify_fragmentation_for_mitochondria(label_mask, skeletons):
 
     # maybe it actually is a good idea to get the mask manipulation for all areas in the skeleton
 
+    # dbg.weight_sum_zero_debug(label_mask, skeletons)
     mask_items = np.unique(label_mask)
     mask_items = mask_items[mask_items > 0].tolist()
 
@@ -787,6 +789,33 @@ def classify_fragmentation_for_mitochondria(label_mask, skeletons):
     return final_classification, classification_mask, radius_mask, support_mask
 
 
+@generator_wrapper(in_dims=(3,), out_dims=(3,))
+def locally_normalize(channel, local_xy_pool=5, local_z_pool=2):
+    selem = disk(local_xy_pool)
 
+    new_slice_collector = []
+    for xy_slice_index in range(0, channel.shape[0]):
+        slice_median = median(channel[xy_slice_index, :, :], selem)
+        new_slice = channel[xy_slice_index, :, :]*2**8 - slice_median  # TODO => resolve the int shen.
 
+        new_slice[new_slice < 0] = 0
+        new_slice[slice_median == 0] = 0
+
+        # main_ax = plt.subplot(131)
+        # plt.imshow(channel[xy_slice_index, :, :], interpolation='nearest')
+        # plt.colorbar()
+        #
+        # plt.subplot(132, sharex=main_ax, sharey=main_ax)
+        # plt.imshow(slice_median, interpolation='nearest')
+        # plt.colorbar()
+        #
+        # plt.subplot(133, sharex=main_ax, sharey=main_ax)
+        # plt.imshow(new_slice, interpolation='nearest')
+        # plt.colorbar()
+        #
+        # plt.show()
+
+        new_slice_collector.append(new_slice.astype(np.float)/2.**8)
+
+    return np.array(new_slice_collector)
 
