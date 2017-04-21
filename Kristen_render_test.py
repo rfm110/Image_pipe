@@ -112,3 +112,22 @@ def Kristen_render(name_pattern,
         plt.close()
 
     return qualifying_regression_stats
+
+# original portion from pipeline that calls this function
+running_render = rdr.Kristen_render(mCherry_o_n_segmented, in_channel=['name pattern',
+                                                                'group id',
+                                                               'max_mCherry',
+                                                               'max_mCherry_binary',
+                                                               'GFP',
+                                                               'mCherry'],
+                                   out_channel='_',
+                                    output='Kristen_Transfection_B_and_C_GFP_analysis_results.csv',
+                                   save=True)
+
+#
+# Kristen_summary = rdr.Kristen_summarize_a(running_render, in_channel = ['name pattern', 'q_mean','q_median', 'q_std', 'nq_mean', 'nq_median', 'nq_std', 'slope', 'r2', 'p'],
+#                                out_channel='_',
+#                                output='Kristen_Transfection_B_and_C_GFP_analysis_results.csv')
+
+for i in enumerate(running_render):
+print 'Analyzed group %s - image %s' % (['group id'], ['name pattern'])
