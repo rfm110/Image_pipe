@@ -237,11 +237,12 @@ def xi_traverse(main_root, matching_map=None):
             yield name_pattern, str(time_stamp), channels
 
 
-def Kristen_traverse(main_root, matching_rule='c', matching_map=None):
+def Kristen_read_file(main_root, matching_rule='c', matching_map=None):
+
+    # need to split these into different methods-way too long (refactor -> extract -> method, only the last method will yield, the ones before will only return)
+    # make separate csv method since it will be used for other pipelines as well
     print "starting kristen's traversal"
     matched_images = defaultdict(lambda: [''] * len(matching_map))
-
-    # name_pattern_list = []
     if matching_rule:
         assert (matching_map is not None)
     for current_location, sub_directories, files in os.walk(main_root):
@@ -250,35 +251,12 @@ def Kristen_traverse(main_root, matching_rule='c', matching_map=None):
                     if ('.TIF' in img or '.tif' in img) and '_thumb_' not in img:
                         prefix = cf.split_and_trim(current_location, main_root)
                         img_codename = [img.split('.')[0]]
-
-
-
-                        # # choosing one image to work with
-                        # c = img_codename[0].split('-')[0]
-                        # b = img_codename[0].split(' ')[-1][0]
-                        # print c
-                        # print b
-                        # if c == 'C1' and b[0] == 'B':
-                        #     # change these conditions back to original to test all images
-                        #     print "found image"
-                        #
-                        #     name_pattern = ' - '.join(prefix + img_codename[0].split(' ')[1:])
-                        #     group_by = img_codename[0][:2]
-                        #     color = matching_map[img_codename[0].split('-')[0]]
-                        #     # print matched_images[name_pattern][color]
-                        #     # print os.path.join(current_location, img)
-                        #     matched_images[name_pattern][color] = os.path.join(current_location, img)
                     name_pattern = ' - '.join(prefix + img_codename[0].split(' ')[1:])
                     group_by = img_codename[0][:2]
                     color = matching_map[img_codename[0].split('-')[0]]
-                    # print matched_images[name_pattern][color]
-                    # print os.path.join(current_location, img)
                     matched_images[name_pattern][color] = os.path.join(current_location, img)
 
-    # shift tab upper portion out/ placed inside for loop to study a single image but originally only inside the if(.TIF...)
-
     delset = []
-
     for name_pattern, (color_set) in matched_images.iteritems():
         # debugger.logger.debug(color_set)
         if any([color == '' for color in color_set]):
@@ -290,13 +268,16 @@ def Kristen_traverse(main_root, matching_rule='c', matching_map=None):
 
     for name_pattern in delset:
         del matched_images[name_pattern]
+    csv_writer(matched_images)
+    # return matched_images
+
+def csv_writer(matched_images):
 
     user_input_about_new_csv_file = raw_input("To continue, enter 2. To start the process from the beginning, enter 1")
 
     if user_input_about_new_csv_file == '1':
         print "Preparing a new CSV file"
         initial_open = open("matched_images.csv", 'wb')
-        # this is the file we need to save unless user provides input saying we can override it
         writer = csv.writer(initial_open, delimiter='\t')
         for key in matched_images:
             writer.writerow([key] + matched_images[key] + [0])
@@ -332,12 +313,15 @@ def Kristen_traverse(main_root, matching_rule='c', matching_map=None):
             for new_csv_row in csv_list:
                 override_csv.writerow(new_csv_row)
 
+    Kristen_yield(matched_images)
+    # return(matched_images)
+
+def Kristen_yield(matched_images):
     open_updated_csv_to_read = open('matched_images.csv', 'rb')
     csv_reader = csv.reader(open_updated_csv_to_read, delimiter='\t')
 
     open_tmp_to_write = open("matched_images.tmp", 'wb')
     writer_check_tmp = csv.writer(open_tmp_to_write, delimiter='\t')
-
     for row in csv_reader:
         name_pattern = row[0]
         color_set = [row[1], row[2], row[3]]
@@ -350,23 +334,11 @@ def Kristen_traverse(main_root, matching_rule='c', matching_map=None):
             channels.append(cf.tiff_stack_2_np_arr(color))
             plot_list.append(cf.tiff_stack_2_np_arr(color))
 
-#         plt.figure(figsize=(20.0, 15.0))
-#         plt.suptitle('Projected DAPI. GFP, mCherry')
-#         plt.title('DAPI')
-#         dapi = np.max(plot_list[0], axis=0)
-#         plt.imshow(dapi, interpolation='nearest', cmap='gray')
-#         plt.title('GFP')
-#         gfp = np.max(plot_list[1], axis=0)
-#         plt.imshow(gfp, interpolation='nearest', cmap='gray')
-#         mcherry = np.max(plot_list[2], axis=0)
-#         plt.imshow(mcherry, interpolation='nearest', alpha=0.3)
-#         plt.show()
-
         yield name_pattern, matched_images, channels
         row[3] = 1
         writer_check_tmp.writerow(row)
 
 
-translator = {'C1':0,
-              'C3':1,
-              'C4':2}
+# translator = {'C1':0,
+#               'C3':1,
+#               'C4':2}
