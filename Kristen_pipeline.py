@@ -50,6 +50,7 @@ running_render = rdr.Kristen_render(mCherry_o_n_segmented, in_channel=['name pat
                                                                'GFP',
                                                                'mCherry'],
                                     out_channel=['my_mask', 'cell_label'])
+
 GFP_limited_to_cell_mask = cf. for_each(running_render, cf._3d_stack_2d_filter, 'per_cell', in_channel = ['GFP', 'my_mask'], out_channel = 'GFP_limited_to_cell_mask')
 mCherry_limited_to_cell_mask = cf. for_each(running_render, cf._3d_stack_2d_filter, 'per_cell', in_channel = ['mCherry', 'my_mask'], out_channel = 'mCherry_limited_to_cell_mask')
 analysis = rdr.Kristen_quantification_analysis(mCherry_limited_to_cell_mask, in_channel = ['name_pattern', 'GFP_limited_to_cell_mask', 'mCherry_limited_to_cell_mask', 'max_mCherry'])
