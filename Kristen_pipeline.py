@@ -43,17 +43,28 @@ mCherry_o_n_segmented = cf.robust_binarize(smoothed_mCherry,
 #                                     out_channel='_',
 #                                     output='Kristen_Transfection_B_and_C_GFP_analysis_results.csv',
 #                                     save=True)
-running_render = rdr.Kristen_render(mCherry_o_n_segmented, in_channel=['name pattern',
+
+
+# CHANGES FOR RESTRUCTURING made below
+running_render = rdr.Kristen_GFP_cutoff(mCherry_o_n_segmented, in_channel=['name pattern',
                                                                 'group id',
                                                                'max_mCherry',
-                                                               'max_mCherry_binary',
-                                                               'GFP',
-                                                               'mCherry'],
+                                                               'max_mCherry_binary'],
                                     out_channel=['my_mask', 'cell_label'])
 
+per_cell_split = cf.splitter(running_render, 'per_cell',
+                             sources=['max_mCherry', 'max_GFP',
+                                      'projected_mCh', 'projected_GFP'],
+                             mask='cell_labels')
 GFP_limited_to_cell_mask = cf. for_each(running_render, cf._3d_stack_2d_filter, 'per_cell', in_channel = ['GFP', 'my_mask'], out_channel = 'GFP_limited_to_cell_mask')
 mCherry_limited_to_cell_mask = cf. for_each(running_render, cf._3d_stack_2d_filter, 'per_cell', in_channel = ['mCherry', 'my_mask'], out_channel = 'mCherry_limited_to_cell_mask')
-analysis = rdr.Kristen_quantification_analysis(mCherry_limited_to_cell_mask, in_channel = ['name_pattern', 'GFP_limited_to_cell_mask', 'mCherry_limited_to_cell_mask', 'max_mCherry'])
+# TODO: determine which mask this is, apply to Kristen's pipeline
+
+analysis = rdr.Kristen_quantification_and_stats(mCherry_limited_to_cell_mask, in_channel = ['name_pattern', 'GFP_limited_to_cell_mask', 'mCherry_limited_to_cell_mask', 'my_mask', 'max_mCherry', 'cell_label'],
+                                                out_channel = ['my_mask', 'sum_qualifying_GFP', 'sum_total_GFP', 'average_3d_GFP', 'median_3d_GFP', 'std_3d_GFP', 'average_nonqualifying_3d_GFP', 'median_nonqualifying_3d_GFP', 'std_nonqualifying_3d_GFP', 'regression_results'])
+
+redner = rdr.Kristen_image_render(analysis, in_channel = 'name_pattern', 'max_mCherry_binary', 'mCherry', 'mCherry_2', 'mCherry_cutoff', 'GFP_1d', 'mCherry_1d', 'cell_label', save=False, directory_to_save_to='verification')
+write_csv = rdr.Kristen_write_to_csv(analysis, in_channel = ['name_pattern', 'cell_label', 'sum_qualifying_GFP', 'sum_total_GFP', 'average_3d_GFP', 'median_3d_GFP', 'std_3d_GFP', 'average_nonqualifying_3d_GFP', 'median_nonqualifying_3d_GFP', 'std_nonqualifying_3d_GFP', 'regression_results'])
 
 # HOW to replace cell label in for loop with 'per_cell' channel and 'for_each' method
 #

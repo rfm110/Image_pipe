@@ -320,17 +320,23 @@ def Kristen_render_single_image(dapi, gfp, mcherry):
     plt.title('mCherry')
     plt.imshow(mcherry, interpolation='nearest')
 
-@generator_wrapper(in_dims=(None,None, 2, 2, 3, 3), out_dims=(2,))
-def Kristen_render(name_pattern,
+
+# def Kristen_GFP_cutoff(name_pattern,
+#                    group_id,
+#                    mCherry,
+#                    extranuclear_mCherry_pad,
+#                    GFP_orig,
+#                    mCherry_orig, output,
+#                    save=False, directory_to_save_to='verification'):
+
+@generator_wrapper(in_dims=(None,None, 2, 2), out_dims=(2,1))
+def Kristen_GFP_cutoff(name_pattern,
                    group_id,
                    mCherry,
-                   extranuclear_mCherry_pad,
-                   GFP_orig,
-                   mCherry_orig, output,
+                   extranuclear_mCherry_pad, output,
                    save=False, directory_to_save_to='verification'):
     labels, _ = ndi.label(extranuclear_mCherry_pad)
     unique_segmented_cells_labels = np.unique(labels)[1:]
-
 
 
     for cell_label in unique_segmented_cells_labels:
@@ -345,45 +351,8 @@ def Kristen_render(name_pattern,
         if (average_apply_mask > .05 or intensity > 300) and pixel > 4000:
             return my_mask, cell_label
 
-            # GFP_limited_to_cell_mask = cf._3d_stack_2d_filter(GFP_orig, my_mask)
-            # mCherry_limited_to_cell_mask = cf._3d_stack_2d_filter(mCherry_orig, my_mask)
-
-
-            # qualifying_3d_GFP = GFP_limited_to_cell_mask[mCherry_limited_to_cell_mask>50]
-            # average_3d_GFP = np.mean(qualifying_3d_GFP)
-            # median_3d_GFP = np.median(qualifying_3d_GFP)
-            # std_3d_GFP = np.std(qualifying_3d_GFP)
-            # sum_qualifying_GFP = np.sum(qualifying_3d_GFP)
-            #
-            # nonqualifying_3d_GFP = GFP_limited_to_cell_mask[mCherry_limited_to_cell_mask<=50]
-            # average_nonqualifying_3d_GFP = np.mean(nonqualifying_3d_GFP)
-            # median_nonqualifying_3d_GFP = np.median(nonqualifying_3d_GFP)
-            # std_nonqualifying_3d_GFP = np.std(nonqualifying_3d_GFP)
-            # sum_nonqualifying_GFP = np.sum(nonqualifying_3d_GFP)
-            #
-            # sum_total_GFP = sum_qualifying_GFP + sum_nonqualifying_GFP
-            # percent_qualifying_over_total_GFP = sum_qualifying_GFP/sum_total_GFP
-            # # report the percentage too or sums are sufficient?
-            #
-            # # GFP_orig_qualifying = cf._3d_stack_2d_filter(GFP_orig, my_mask)
-            # # mCherry_orig_qualifying = cf._3d_stack_2d_filter(mCherry_orig, my_mask)
-            # mCherry_1d = mCherry_limited_to_cell_mask[mCherry_limited_to_cell_mask > 50]
-            # GFP_1d = GFP_limited_to_cell_mask[mCherry_limited_to_cell_mask>50]
-            # regression_results = stats.linregress(GFP_1d, mCherry_1d)
-            #
-            # mCherry_2[my_mask] = mCherry[my_mask]
-            # mCherry_cutoff[my_mask] = mCherry[my_mask]
-            # qualifying_cell_label.append(cell_label)
-            # qualifying_regression_stats.append((regression_results[0], regression_results[2], regression_results[3]))
-            #
-            # name_pattern_split = name_pattern.split(' - ')
-            # transfection_label = name_pattern_split[0]
-            # cell_type = name_pattern_split[1]
-            # exp_time = name_pattern_split[2]
-            # image_number = name_pattern_split[4]
-
-@generator_wrapper(in_dims=(None, 2, 2, 2, 2, None), out_dims=(2,None))
-def Kristen_quantification_analysis(name_pattern, GFP_limited_to_cell_mask,mCherry_limited_to_cell_mask, my_mask, mCherry, cell_label):
+@generator_wrapper(in_dims=(None, 2, 2, 2, 2, None), out_dims=( None, None, None, None, None, None, None, None, None))
+def Kristen_quantification_and_stats(name_pattern, GFP_limited_to_cell_mask,mCherry_limited_to_cell_mask, my_mask, mCherry, cell_label):
     qualifying_cell_label = []
     qualifying_regression_stats = []
     mCherry_cutoff = np.zeros_like(mCherry)
@@ -415,17 +384,67 @@ def Kristen_quantification_analysis(name_pattern, GFP_limited_to_cell_mask,mCher
     mCherry_cutoff[my_mask] = mCherry[my_mask]
     qualifying_cell_label.append(cell_label)
     qualifying_regression_stats.append((regression_results[0], regression_results[2], regression_results[3]))
+    return my_mask, sum_qualifying_GFP, sum_total_GFP, average_3d_GFP, median_3d_GFP, std_3d_GFP, average_nonqualifying_3d_GFP, median_nonqualifying_3d_GFP, std_nonqualifying_3d_GFP, regression_results
 
+@generator_wrapper(in_dims=None, 2, 2,2,2,1,1,None)
+def Kristen_image_render(name_pattern, extranuclear_mCherry_pad, mCherry, mCherry_2, mCherry_cutoff, GFP_1d, mCherry_1d, cell_label, save=False, directory_to_save_to='verification'):
+    plt.figure(figsize=(26.0, 15.0))
+    plt.title('Kristen\'s Data')
+    plt.suptitle(name_pattern)
+
+    main_ax = plt.subplot(221)
+    plt.subplot(221, sharex=main_ax, sharey=main_ax)
+    plt.title('mCherry Binary')
+    im = plt.imshow(extranuclear_mCherry_pad, interpolation='nearest', cmap = 'hot')
+    plt.colorbar(im)
+    plt.subplot(222, sharex=main_ax, sharey=main_ax)
+    plt.title('mCherry')
+    plt.imshow(mCherry, interpolation='nearest')
+    plt.contour(extranuclear_mCherry_pad, [0.5], colors='k')
+    plt.subplot(223)
+    dplt.better2D_desisty_plot(GFP_1d, mCherry_1d)
+    plt.title('mCherry Intensity as a Function of GFP Voxel')
+    plt.xlabel('GFP Voxel')
+    plt.ylabel('mCherry Intensity')
+    plt.subplot(224, sharex=main_ax, sharey=main_ax)
+    plt.title('mCherry-cutoff applied')
+    plt.imshow(mCherry_2, interpolation='nearest')
+    if not save:
+        plt.show()
+    else:
+        name_puck = directory_to_save_to + '/' + 'Kristen-' + name_pattern+ '_cell' + str(cell_label)+ '.png'
+        plt.savefig(name_puck)
+        plt.close()
+
+    plt.figure(figsize=(26.0, 15.0))
+    main_ax = plt.subplot(121)
+    plt.subplot(121, sharex=main_ax, sharey=main_ax)
+    plt.suptitle('mCherry Before and After Qualifying Cell Cutoff is Applied')
+    plt.title('mCherry')
+    im = plt.imshow(mCherry, interpolation='nearest')
+    plt.colorbar(im)
+    plt.subplot(122, sharex=main_ax, sharey=main_ax)
+    plt.title('mCherry')
+    plt.imshow(mCherry_cutoff, interpolation='nearest')
+    if not save:
+        plt.show()
+    else:
+        name_puck = directory_to_save_to + '/' + 'Kristen-' + name_pattern + 'cutoff_app' + '.png'
+        plt.savefig(name_puck)
+        plt.close()
+
+@generator_wrapper(in_dims=None, None, None, None, None, None, None, None, None)
+def Kristen_write_to_csv(name_pattern, cell_label,  sum_qualifying_GFP, sum_total_GFP, average_3d_GFP, median_3d_GFP, std_3d_GFP, average_nonqualifying_3d_GFP, median_nonqualifying_3d_GFP, std_nonqualifying_3d_GFP, regression_results, output):
     name_pattern_split = name_pattern.split(' - ')
     transfection_label = name_pattern_split[0]
     cell_type = name_pattern_split[1]
     exp_time = name_pattern_split[2]
     image_number = name_pattern_split[4]
 
-    #         with open(output, 'ab') as output_file:
-    #             writer = csv_writer(output_file, delimiter='\t')
-    #             writer.writerow([transfection_label, cell_type, exp_time, image_number, cell_label, sum_qualifying_GFP, sum_total_GFP, average_3d_GFP, median_3d_GFP, std_3d_GFP, average_nonqualifying_3d_GFP, median_nonqualifying_3d_GFP, std_nonqualifying_3d_GFP, regression_results[0], regression_results[2], regression_results[3]])
-    #
+    with open(output, 'ab') as output_file:
+        writer = csv_writer(output_file, delimiter='\t')
+        writer.writerow([transfection_label, cell_type, exp_time, image_number, cell_label, sum_qualifying_GFP, sum_total_GFP, average_3d_GFP, median_3d_GFP, std_3d_GFP, average_nonqualifying_3d_GFP, median_nonqualifying_3d_GFP, std_nonqualifying_3d_GFP, regression_results[0], regression_results[2], regression_results[3]])
+
     #         plt.figure(figsize=(26.0, 15.0))
     #         plt.title('Kristen\'s Data')
     #         plt.suptitle(name_pattern)

@@ -81,6 +81,7 @@ segmented_mito = cf.for_each(per_cell_mito, cf.label_and_correct, 'per_cell',
                              in_channel=['mito_binary', 'projected_mCh'],
                              out_channel='mito_labels')
 
+
 mito_3d_from_2d_mask = cf.for_each(segmented_mito, cf._3d_mask_from_2d_mask, 'per_cell',
                                     in_channel=['mCherry', 'mito_labels'],
                                     out_channel='mito_labels_3d')
