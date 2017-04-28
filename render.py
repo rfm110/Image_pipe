@@ -10,6 +10,7 @@ import density_plot as dplt
 import core_functions as cf
 from chiffatools.dataviz import better2D_desisty_plot
 from scipy.stats import linregress
+import debug_renders as dbg
 
 
 @generator_wrapper(in_dims=(None, 2, 2, 2, 2, 1, 1, None, None, 2, 2), out_dims=(None,))
@@ -329,16 +330,17 @@ def Kristen_render_single_image(dapi, gfp, mcherry):
 #                    mCherry_orig, output,
 #                    save=False, directory_to_save_to='verification'):
 
-@generator_wrapper(in_dims=(None,None, 2, 2), out_dims=(2,None))
-def Kristen_GFP_cutoff(name_pattern,
+@generator_wrapper(in_dims=(None,None, 2, 2), out_dims=(2,))
+def Kristen_GFP_cutoff(namepattern,
                    group_id,
                    mCherry,
                    extranuclear_mCherry_pad):
     labels, _ = ndi.label(extranuclear_mCherry_pad)
     unique_segmented_cells_labels = np.unique(labels)[1:]
-
-
+    superimposed_mask = np.zeros_like(mCherry)
+    num = 0
     for cell_label in unique_segmented_cells_labels:
+        print 'reached for loop'
 
         my_mask = labels == cell_label
         average_apply_mask = np.mean(mCherry[my_mask])
@@ -348,27 +350,36 @@ def Kristen_GFP_cutoff(name_pattern,
         pixel = np.sum(binary_pad[my_mask])
 
         if (average_apply_mask > .05 or intensity > 300) and pixel > 4000:
-            return my_mask, cell_label
+            num += 1
+            print num
+            superimposed_mask_secondary = np.zeros_like(mCherry)
+            superimposed_mask_secondary[my_mask] = num
+            superimposed_mask += superimposed_mask_secondary
+    # dbg.Kristen_GFP_cutoff_debug(superimposed_mask)
+    return superimposed_mask,
 
-@generator_wrapper(in_dims=(None, 2, 2, 2, 2, None), out_dims=(2, None, None, None, None, None, None, None, None, None))
+@generator_wrapper(in_dims=(None, 3, 3, 2, 2), out_dims=(2,2,2,2, 1,1 , None, None, None, None, None, None, None, None, None))
 def Kristen_quantification_and_stats(name_pattern,
-                                     GFP_limited_to_cell_mask,
-                                     mCherry_limited_to_cell_mask,
-                                     my_mask,
+                                     GFP,
                                      mCherry,
-                                     cell_label):
+                                     my_mask,
+                                     max_mCherry):
+    print 'reached quantification function'
+    cell_label, _ = ndi.label(my_mask)
     qualifying_cell_label = []
     qualifying_regression_stats = []
     mCherry_cutoff = np.zeros_like(mCherry)
     mCherry_2 = np.zeros_like(mCherry)
 
-    qualifying_3d_GFP = GFP_limited_to_cell_mask[mCherry_limited_to_cell_mask > 50]
+    # GFP_limited_to_cell_mask = cf._3d_stack_2d_filter(GFP, my_mask)
+    # mCherry_limited_to_cell_mask = cf._3d_stack_2d_filter(max_mCherry, my_mask)
+    qualifying_3d_GFP = GFP[mCherry > 50]
     average_3d_GFP = np.mean(qualifying_3d_GFP)
     median_3d_GFP = np.median(qualifying_3d_GFP)
     std_3d_GFP = np.std(qualifying_3d_GFP)
     sum_qualifying_GFP = np.sum(qualifying_3d_GFP)
 
-    nonqualifying_3d_GFP = GFP_limited_to_cell_mask[mCherry_limited_to_cell_mask <= 50]
+    nonqualifying_3d_GFP = GFP[mCherry <= 50]
     average_nonqualifying_3d_GFP = np.mean(nonqualifying_3d_GFP)
     median_nonqualifying_3d_GFP = np.median(nonqualifying_3d_GFP)
     std_nonqualifying_3d_GFP = np.std(nonqualifying_3d_GFP)
@@ -379,22 +390,30 @@ def Kristen_quantification_and_stats(name_pattern,
     # report the percentage too or sums are sufficient?
     # GFP_orig_qualifying = cf._3d_stack_2d_filter(GFP_orig, my_mask)
     # mCherry_orig_qualifying = cf._3d_stack_2d_filter(mCherry_orig, my_mask)
-    mCherry_1d = mCherry_limited_to_cell_mask[mCherry_limited_to_cell_mask > 50]
-    GFP_1d = GFP_limited_to_cell_mask[mCherry_limited_to_cell_mask > 50]
+
+    mCherry_1d = mCherry[mCherry > 50]
+    GFP_1d = GFP[mCherry > 50]
     regression_results = stats.linregress(GFP_1d, mCherry_1d)
 
-    mCherry_2[my_mask] = mCherry[my_mask]
-    mCherry_cutoff[my_mask] = mCherry[my_mask]
-    qualifying_cell_label.append(cell_label)
-    qualifying_regression_stats.append((regression_results[0], regression_results[2], regression_results[3]))
-    return my_mask, sum_qualifying_GFP, sum_total_GFP, average_3d_GFP, median_3d_GFP, std_3d_GFP, average_nonqualifying_3d_GFP, median_nonqualifying_3d_GFP, std_nonqualifying_3d_GFP, regression_results
+    # mCherry_2[my_mask] = max_mCherry[my_mask]
+    mCherry_2 = max_mCherry
 
-@generator_wrapper(in_dims=(None, None, 2, 2,2,2,1,1))
+
+    mCherry_cutoff = max_mCherry.copy()
+    # my_mask_2 = np.where(my_mask>0, 1, 1)
+    # mask2 = np.place(my_mask, my_mask>0, 1)
+    # mCherry_cutoff = max_mCherry[mask2]
+    qualifying_cell_label.append(cell_label)
+
+
+    qualifying_regression_stats.append((regression_results[0], regression_results[2], regression_results[3]))
+    return my_mask, mCherry_2, mCherry_cutoff, cell_label, GFP_1d, mCherry_1d, sum_qualifying_GFP, sum_total_GFP, average_3d_GFP, median_3d_GFP, std_3d_GFP, average_nonqualifying_3d_GFP, median_nonqualifying_3d_GFP, std_nonqualifying_3d_GFP, regression_results
+
+@generator_wrapper(in_dims=(None, None, 2, 2,2,1,1), out_dims=(None,))
 def Kristen_image_render(name_pattern,
                          cell_label,
                          extranuclear_mCherry_pad,
                          mCherry,
-                         mCherry_2,
                          mCherry_cutoff,
                          GFP_1d,
                          mCherry_1d,
@@ -419,9 +438,8 @@ def Kristen_image_render(name_pattern,
     plt.ylabel('mCherry Intensity')
     plt.subplot(224, sharex=main_ax, sharey=main_ax)
     plt.title('mCherry-cutoff applied')
-    plt.imshow(mCherry_2, interpolation='nearest')
+    plt.imshow(mCherry_cutoff, interpolation='nearest')
     if not save:
-        print 'not saving image'
         plt.show()
     else:
         name_puck = directory_to_save_to + '/' + 'Kristen-' + name_pattern+ '_cell' + str(cell_label)+ '.png'
@@ -437,7 +455,7 @@ def Kristen_image_render(name_pattern,
     plt.colorbar(im)
     plt.subplot(122, sharex=main_ax, sharey=main_ax)
     plt.title('mCherry')
-    plt.imshow(mCherry_cutoff, interpolation='nearest')
+    plt.imshow(mCherry_cutoff, interpolation='nearest')   #!!!!!!!!!!!!!!!!!!!!
     if not save:
         plt.show()
     else:
@@ -445,7 +463,7 @@ def Kristen_image_render(name_pattern,
         plt.savefig(name_puck)
         plt.close()
 
-@generator_wrapper(in_dims=(None, None, None, None, None, None, None, None, None, None, None))
+@generator_wrapper(in_dims=(None, None, None, None, None, None, None, None, None, None, None), out_dims=(None,))
 def Kristen_write_to_csv(name_pattern,
                          cell_label,
                          sum_qualifying_GFP,
@@ -482,6 +500,8 @@ def Kristen_write_to_csv(name_pattern,
                          regression_results[0],
                          regression_results[2],
                          regression_results[3]])
+
+
 
 @generator_wrapper(in_dims=(None, None, 1, 1, 1, 1), out_dims=(None,))
 def akshay_summarize(name_pattern, group_by, av_nuc_p53, av_en_p53, av_nuc_p21, av_en_p21, output):

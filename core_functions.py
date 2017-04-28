@@ -153,6 +153,7 @@ def generator_wrapper(f, in_dims=(3,), out_dims=None):
                         print chan, len(name_space[chan].shape), in_dims[i]
                         raise PipeArgError('Mismatched inbound channel dimension for channel. %s is of dim %s, expected %s'%
                                            (chan, len(name_space[chan].shape), in_dims[i]))
+                    # print name_space.keys()
                     args_puck.append(name_space[chan])
 
                 local_args = tuple(args_puck) + args

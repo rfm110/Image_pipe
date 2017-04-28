@@ -378,3 +378,9 @@ def nuclei_debug(binarized, segmented):
     plt.imshow(segmented, interpolation='nearest', cmap='gray')
 
     plt.show()
+
+def Kristen_GFP_cutoff_debug(superimposed_mask):
+    plt.figure(figsize=(20.0, 15.0))
+    plt.title('Superimposed Mask (all qualifying cells from one image)')
+    plt.imshow(superimposed_mask)
+    plt.show()
