@@ -268,8 +268,7 @@ def Kristen_read_file(main_root, matching_rule='c', matching_map=None):
 
     for name_pattern in delset:
         del matched_images[name_pattern]
-    csv_writer(matched_images)
-    # return matched_images
+    return matched_images
 
 def csv_writer(matched_images):
 
@@ -313,8 +312,7 @@ def csv_writer(matched_images):
             for new_csv_row in csv_list:
                 override_csv.writerow(new_csv_row)
 
-    Kristen_yield(matched_images)
-    # return(matched_images)
+    return matched_images
 
 def Kristen_yield(matched_images):
     open_updated_csv_to_read = open('matched_images.csv', 'rb')
