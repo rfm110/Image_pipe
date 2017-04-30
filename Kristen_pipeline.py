@@ -67,35 +67,36 @@ per_cell_split = cf.splitter(running_render, 'per_cell',
 #
 # GFP_limited_to_cell_mask = cf. for_each(per_cell_split, cf._3d_stack_2d_filter, 'per_cell', in_channel = ['GFP', 'my_mask'], out_channel = 'GFP_limited_to_cell_mask')
 # mCherry_limited_to_cell_mask = cf. for_each(GFP_limited_to_cell_mask, cf._3d_stack_2d_filter, 'per_cell', in_channel = ['mCherry', 'my_mask'], out_channel = 'mCherry_limited_to_cell_mask')
-# TODO: determine which mask this is, apply to Kristen's pipeline
 
 
-analysis = rdr.Kristen_quantification_and_stats(per_cell_split, in_channel = ['name pattern',
-                                                                              'GFP',
+analysis = cf.for_each(per_cell_split, rdr.Kristen_quantification_and_stats, 'per_cell',
+                                                                in_channel = ['GFP',
                                                                               'mCherry',
-                                                                              'my_mask',
                                                                               'max_mCherry'],
 
-                                                                            out_channel = ['my_mask',
-                                                                                           'mCherry_2',
-                                                                                           'mCherry_cutoff',
-                                                                                           'cell_label',
-                                                                                           'GFP_1d',
-                                                                                           'mCherry_1d',
-                                                                                           'sum_qualifying_GFP',
-                                                                                           'sum_total_GFP',
-                                                                                           'average_3d_GFP',
-                                                                                           'median_3d_GFP',
-                                                                                           'std_3d_GFP',
-                                                                                           'average_nonqualifying_3d_GFP',
-                                                                                           'median_nonqualifying_3d_GFP',
-                                                                                           'std_nonqualifying_3d_GFP',
-                                                                                           'regression_results'])
+                                                                out_channel = ['mCherry_2',
+                                                                               'mCherry_cutoff',
+                                                                               'GFP_1d',
+                                                                               'mCherry_1d',
+                                                                               'sum_qualifying_GFP',
+                                                                               'sum_total_GFP',
+                                                                               'average_3d_GFP',
+                                                                               'median_3d_GFP',
+                                                                               'std_3d_GFP',
+                                                                               'average_nonqualifying_3d_GFP',
+                                                                               'median_nonqualifying_3d_GFP',
+                                                                               'std_nonqualifying_3d_GFP',
+                                                                               'regression_results'])
+# Need to render the following (tile them first)
+#     mCherry   mCherry_2   mCherry_cutoff  GFP_1d  mCherry_1d
 
+mCherry_tiled = cf.tile_from_mask(analysis, 'per_cell', 'max_mCherry')
+mCherry_2_tiled = cf.tile_from_mask(mCherry_tiled, 'per_cell', 'mCherry_2')
+mCherry_cutoff_tiled = cf.tile_from_mask(mCherry_2_tiled, 'per_cell', 'mCherry_cutoff')
 
-render = rdr.Kristen_image_render(analysis, in_channel = ['name pattern',
-                                                          'cell_label',
+render = rdr.Kristen_image_render(mCherry_cutoff_tiled, in_channel = ['name pattern',
                                                           'max_mCherry_binary',
+                                                          'max_mCherry',
                                                           'mCherry_2',
                                                           'mCherry_cutoff',
                                                           'GFP_1d',
