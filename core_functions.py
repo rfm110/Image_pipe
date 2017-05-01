@@ -148,7 +148,6 @@ def generator_wrapper(f, in_dims=(3,), out_dims=None):
                 args_puck = []
 
                 for i, chan in enumerate(in_chan):
-                    print name_space.keys()
                     if in_dims[i] and len(name_space[chan].shape) != in_dims[i]:
                         print f.__name__
                         print chan, len(name_space[chan].shape), in_dims[i]
