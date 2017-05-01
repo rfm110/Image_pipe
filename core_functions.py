@@ -207,9 +207,14 @@ def splitter(outer_generator, to, sources, mask):
 
         primary_namespace[to]['_pad'] = (unique_vals, primary_namespace[mask])  # used to rebuild padded images
 
+
+
         for val in unique_vals:
             secondary_namespace = {}
             primary_namespace[to][val] = secondary_namespace
+
+            secondary_namespace['name pattern'] = primary_namespace['name pattern']
+            secondary_namespace['cell_number'] = val
 
             for chan in sources:
                 local_mask = primary_namespace[mask] == val

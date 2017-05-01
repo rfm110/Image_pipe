@@ -334,7 +334,6 @@ def Kristen_yield(matched_images):
 
         yield name_pattern, matched_images, channels
         row[3] = 1
-        writer_check_tmp.writerow(row)
 
 
 # translator = {'C1':0,

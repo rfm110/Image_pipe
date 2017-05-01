@@ -49,7 +49,9 @@ per_cell_split = cf.splitter(running_render, 'per_cell',
 
 
 analysis = cf.for_each(per_cell_split, rdr.Kristen_quantification_and_stats, 'per_cell',
-                                                                in_channel = ['GFP',
+                                                                in_channel = ['name pattern',
+                                                                              'cell_number',
+                                                                              'GFP',
                                                                               'mCherry',
                                                                               'max_mCherry'],
 
@@ -67,7 +69,7 @@ analysis = cf.for_each(per_cell_split, rdr.Kristen_quantification_and_stats, 'pe
                                                                                'slope_linregress',
                                                                                'r_value',
                                                                                'p_value'],
-                                                                save=False,
+                                                                save=True,
                                                                 directory_to_save_to='verification')
 
 mCherry_tiled = cf.tile_from_mask(analysis, 'per_cell', 'max_mCherry')
@@ -83,7 +85,7 @@ render = rdr.Kristen_image_render(max_mCherry_orig, in_channel = ['name pattern'
                                                                   'max_mCherry_orig',
                                                                   'mCherry_cutoff'],
                                                     out_channel='_',
-                                                    save=False,
+                                                    save=True,
                                                     directory_to_save_to='verification')
 
 write_csv = rdr.Kristen_write_to_csv(render,

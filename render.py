@@ -306,7 +306,7 @@ def xi_pre_render(name_pattern, proj_gfp, qual_gfp, cell_labels, average_gfp_pad
 
 
 @generator_wrapper(in_dims=(None,None, 2, 2), out_dims=(2, None))
-def Kristen_GFP_cutoff(namepattern,
+def Kristen_GFP_cutoff(name_pattern,
                    group_id,
                    mCherry,
                    extranuclear_mCherry_pad):
@@ -329,11 +329,13 @@ def Kristen_GFP_cutoff(namepattern,
             superimposed_mask_secondary[my_mask] = num
             superimposed_mask += superimposed_mask_secondary
     # dbg.Kristen_GFP_cutoff_debug(superimposed_mask)
-    return superimposed_mask, labels
+    return superimposed_mask, unique_segmented_cells_labels
 
 
-@generator_wrapper(in_dims=(3, 3, 2), out_dims=(2, 1,1 , None, None, None, None, None, None, None, None, None, None, None))
-def Kristen_quantification_and_stats(GFP,
+@generator_wrapper(in_dims=(None, None, 3, 3, 2), out_dims=(2, 1,1 , None, None, None, None, None, None, None, None, None, None, None))
+def Kristen_quantification_and_stats(name_pattern,
+                                     cell_number,
+                                     GFP,
                                      mCherry,
                                      max_mCherry,
                                      save=False,
@@ -354,24 +356,22 @@ def Kristen_quantification_and_stats(GFP,
     percent_qualifying_over_total_GFP = sum_qualifying_GFP / sum_total_GFP
 
     mCherry_1d = mCherry[mCherry > 50]
-    GFP_1d = GFP[mCherry>50]
+    GFP_1d = GFP[mCherry > 50]
 
     regression_results = stats.linregress(GFP_1d, mCherry_1d)
     mCherry_cutoff = max_mCherry.copy()
-
+    plt.figure()
+    plt.suptitle(name_pattern)
     dplt.better2D_desisty_plot(GFP_1d, mCherry_1d)
     plt.title('mCherry Intensity as a Function of GFP Voxel')
     plt.xlabel('GFP Voxel')
     plt.ylabel('mCherry Intensity')
-    plt.show()
 
     # TODO: names for images within the for each
     if not save:
         plt.show()
     else:
-
-        # name_puck = directory_to_save_to + '/' + 'Kristen-' + name_pattern+ '_cell' + str(cell_label)+ '.png'
-        name_puck = directory_to_save_to + '/' + 'Kristen-' + 'density_plot' + '.png'
+        name_puck = directory_to_save_to + '/' + 'Kristen-' + name_pattern + '_density_plot' + '_cell_' + str(int(cell_number)) + '.png'
         plt.savefig(name_puck)
         plt.close()
 
@@ -409,7 +409,7 @@ def Kristen_image_render(name_pattern,
     if not save:
         plt.show()
     else:
-        name_puck = directory_to_save_to + '/' + 'Kristen-' + name_pattern + '_cell' + '.png'
+        name_puck = directory_to_save_to + '/' + 'Kristen-' + name_pattern + '.png'
         plt.savefig(name_puck)
         plt.close()
 
@@ -451,7 +451,6 @@ def linhao_summarize(primary_namespace, output):
         namespace = primary_namespace['name pattern']
         tag_group = primary_namespace['group id']
         secondary_namespace = primary_namespace['per_cell']
-        print secondary_namespace
         pre_puck = [namespace] + tag_group
         for key, value in secondary_namespace.iteritems():
             if key != '_pad':
