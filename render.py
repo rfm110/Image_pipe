@@ -305,24 +305,6 @@ def xi_pre_render(name_pattern, proj_gfp, qual_gfp, cell_labels, average_gfp_pad
         plt.close()
 
 
-@generator_wrapper(in_dims=2,out_dims=(None,))
-def Kristen_render_single_image(dapi, gfp, mcherry):
-    plt.figure(figsize=(26.0, 15.0))
-    plt.title('Max Projection')
-
-    plt.subplot(221)
-    plt.title('DAPI')
-    plt.imshow(dapi,interpolation='nearest')
-
-    plt.subplot(222)
-    plt.title('GFP')
-    plt.imshow(gfp, interpolation='nearest')
-
-    plt.subplot(221)
-    plt.title('mCherry')
-    plt.imshow(mcherry, interpolation='nearest')
-
-
 @generator_wrapper(in_dims=(None,None, 2, 2), out_dims=(2, None))
 def Kristen_GFP_cutoff(namepattern,
                    group_id,
@@ -333,7 +315,6 @@ def Kristen_GFP_cutoff(namepattern,
     superimposed_mask = np.zeros_like(mCherry)
     num = 0
     for cell_label in unique_segmented_cells_labels:
-        print 'reached for loop'
 
         my_mask = labels == cell_label
         average_apply_mask = np.mean(mCherry[my_mask])
@@ -344,7 +325,6 @@ def Kristen_GFP_cutoff(namepattern,
 
         if (average_apply_mask > .05 or intensity > 300) and pixel > 4000:
             num += 1
-            print num
             superimposed_mask_secondary = np.zeros_like(mCherry)
             superimposed_mask_secondary[my_mask] = num
             superimposed_mask += superimposed_mask_secondary
@@ -355,14 +335,9 @@ def Kristen_GFP_cutoff(namepattern,
 @generator_wrapper(in_dims=(3, 3, 2), out_dims=(2, 1,1 , None, None, None, None, None, None, None, None, None, None, None))
 def Kristen_quantification_and_stats(GFP,
                                      mCherry,
-                                     max_mCherry):
-    # qualifying_cell_label = []
-    qualifying_regression_stats = []
-    # mCherry_cutoff = np.zeros_like(mCherry)
-    # mCherry_2 = np.zeros_like(mCherry)
-
-    # GFP_limited_to_cell_mask = cf._3d_stack_2d_filter(GFP, my_mask)
-    # mCherry_limited_to_cell_mask = cf._3d_stack_2d_filter(max_mCherry, my_mask)
+                                     max_mCherry,
+                                     save=False,
+                                     directory_to_save_to='verification'):
     qualifying_3d_GFP = GFP[mCherry > 50]
     average_3d_GFP = np.mean(qualifying_3d_GFP)
     median_3d_GFP = np.median(qualifying_3d_GFP)
@@ -377,33 +352,33 @@ def Kristen_quantification_and_stats(GFP,
 
     sum_total_GFP = sum_qualifying_GFP + sum_nonqualifying_GFP
     percent_qualifying_over_total_GFP = sum_qualifying_GFP / sum_total_GFP
-    # report the percentage too or sums are sufficient?
-    # GFP_orig_qualifying = cf._3d_stack_2d_filter(GFP_orig, my_mask)
-    # mCherry_orig_qualifying = cf._3d_stack_2d_filter(mCherry_orig, my_mask)
 
     mCherry_1d = mCherry[mCherry > 50]
     GFP_1d = GFP[mCherry>50]
-    #TODO: Changed above condition to GFP>50 from mCherry >50, now GFP_1d array is empty
-    print 'mCherry 1d', np.shape(mCherry_1d)
-    print 'GFP', np.shape(GFP_1d)
-
 
     regression_results = stats.linregress(GFP_1d, mCherry_1d)
-    print regression_results
-    print type(regression_results)
     mCherry_cutoff = max_mCherry.copy()
+
     dplt.better2D_desisty_plot(GFP_1d, mCherry_1d)
     plt.title('mCherry Intensity as a Function of GFP Voxel')
     plt.xlabel('GFP Voxel')
     plt.ylabel('mCherry Intensity')
     plt.show()
-    qualifying_regression_stats.append((regression_results[0], regression_results[2], regression_results[3]))
+
+    # TODO: names for images within the for each
+    if not save:
+        plt.show()
+    else:
+
+        # name_puck = directory_to_save_to + '/' + 'Kristen-' + name_pattern+ '_cell' + str(cell_label)+ '.png'
+        name_puck = directory_to_save_to + '/' + 'Kristen-' + 'density_plot' + '.png'
+        plt.savefig(name_puck)
+        plt.close()
+
     slope_linregress = regression_results[0]
-    print slope_linregress
     r_value = regression_results[2]
     p_value = regression_results[3]
-    print r_value
-    print p_value
+
     return  mCherry_cutoff, GFP_1d, mCherry_1d, sum_qualifying_GFP, sum_total_GFP, average_3d_GFP, median_3d_GFP, std_3d_GFP, average_nonqualifying_3d_GFP, median_nonqualifying_3d_GFP, std_nonqualifying_3d_GFP, slope_linregress, r_value, p_value
 
 
@@ -429,30 +404,15 @@ def Kristen_image_render(name_pattern,
     plt.subplot(133,sharex=main_ax, sharey=main_ax)
     plt.title('mCherry-cutoff applied')
     plt.imshow(mCherry_cutoff, interpolation='nearest')
+
+
     if not save:
         plt.show()
     else:
-        # name_puck = directory_to_save_to + '/' + 'Kristen-' + name_pattern+ '_cell' + str(cell_label)+ '.png'
         name_puck = directory_to_save_to + '/' + 'Kristen-' + name_pattern + '_cell' + '.png'
         plt.savefig(name_puck)
         plt.close()
 
-    # plt.figure(figsize=(26.0, 15.0))
-    # main_ax = plt.subplot(121)
-    # plt.subplot(121, sharex=main_ax, sharey=main_ax)
-    # plt.suptitle('mCherry Before and After Qualifying Cell Cutoff is Applied')
-    # plt.title('mCherry')
-    # im = plt.imshow(max_mCherry, interpolation='nearest')
-    # plt.colorbar(im)
-    # plt.subplot(122, sharex=main_ax, sharey=main_ax)
-    # plt.title('mCherry')
-    # plt.imshow(mCherry_cutoff, interpolation='nearest')
-    # if not save:
-    #     plt.show()
-    # else:
-    #     name_puck = directory_to_save_to + '/' + 'Kristen-' + name_pattern + 'cutoff_app' + '.png'
-    #     plt.savefig(name_puck)
-    #     plt.close()
 
 
 @generator_wrapper(in_dims=(None, None, None, None, None, None, None, None, None, None, None), out_dims=(None,))
@@ -464,15 +424,15 @@ def Kristen_write_to_csv(primary_namespace,
 
         namespace = primary_namespace['name pattern']
         name_pattern_split = namespace.split(' - ')
-        transfection_label = name_pattern_split[0]
-        image_number = name_pattern_split[4]
+        transfection_label = name_pattern_split[0][-1]
+        image_number = name_pattern_split[4][-1]
         secondary_namespace = primary_namespace['per_cell']
         # cell_type = name_pattern_split[1]
         # exp_time = name_pattern_split[2]
 
         for key, value in secondary_namespace.iteritems():
             if key != '_pad':
-                proper_puck =[transfection_label, image_number, value['sum_qualifying_GFP'], value['sum_total_GFP'], value['average_3d_GFP'], value['median_3d_GFP'], value['std_3d_GFP'], value['average_nonqualifying_3d_GFP'], value['median_nonqualifying_3d_GFP'], value['std_nonqualifying_3d_GFP'], value['slope_linregress'], value['r_value'], value['p_value']]
+                proper_puck =[transfection_label, image_number, key, value['sum_qualifying_GFP'], value['sum_total_GFP'], value['average_3d_GFP'], value['median_3d_GFP'], value['std_3d_GFP'], value['average_nonqualifying_3d_GFP'], value['median_nonqualifying_3d_GFP'], value['std_nonqualifying_3d_GFP'], value['slope_linregress'], value['r_value'], value['p_value']]
                 writer.writerow(proper_puck)
 
 
@@ -491,6 +451,7 @@ def linhao_summarize(primary_namespace, output):
         namespace = primary_namespace['name pattern']
         tag_group = primary_namespace['group id']
         secondary_namespace = primary_namespace['per_cell']
+        print secondary_namespace
         pre_puck = [namespace] + tag_group
         for key, value in secondary_namespace.iteritems():
             if key != '_pad':
