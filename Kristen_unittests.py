@@ -15,8 +15,8 @@ class Kristen_pipeline_tester(unittest.TestCase):
         #not the best one to start testing with since it has 4 conditions
         pass
     def test_robust_binarize(self):
-        # important function to test
-        base_image = cf.max_projection()
+        # important function to test, requires 2D input image
+        cf.robust_binarize(base_2D_image)
         pass
 
 
