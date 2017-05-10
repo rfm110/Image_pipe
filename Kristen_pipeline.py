@@ -2,6 +2,7 @@ import traversals as uf
 import core_functions as cf
 import render as rdr
 from csv import writer as csv_writer
+import wrapped_functions as wf
 from csv import DictWriter
 from time import time
 
@@ -23,15 +24,15 @@ kristen_yield = uf.Kristen_yield(start_csv)
 
 named_source = uf.name_channels(kristen_yield, ['DAPI','GFP', 'mCherry'])
 
-max_mCherry = cf.max_projection(named_source, in_channel='mCherry', out_channel='max_mCherry')
+max_mCherry = wf.max_projection(named_source, in_channel='mCherry', out_channel='max_mCherry')
 
-max_GFP = cf.max_projection(max_mCherry, in_channel='GFP', out_channel='max_GFP')
+max_GFP = wf.max_projection(max_mCherry, in_channel='GFP', out_channel='max_GFP')
 
-stabilized_mCherry = cf.gamma_stabilize(max_GFP, in_channel='max_mCherry', min='min', alpha_clean=.5)
+stabilized_mCherry = wf.gamma_stabilize(max_GFP, in_channel='max_mCherry', min='min', alpha_clean=.5)
 
-smoothed_mCherry = cf.smooth_2d(stabilized_mCherry, in_channel='max_mCherry', smoothing_px=.5)
+smoothed_mCherry = wf.smooth_2d(stabilized_mCherry, in_channel='max_mCherry', smoothing_px=.5)
 
-mCherry_o_n_segmented = cf.robust_binarize(smoothed_mCherry,
+mCherry_o_n_segmented = wf.robust_binarize(smoothed_mCherry,
                                        in_channel='max_mCherry',
                                        out_channel='max_mCherry_binary',
                                        heterogeity_size=10, feature_size=250)
@@ -69,7 +70,7 @@ analysis = cf.for_each(per_cell_split, rdr.Kristen_quantification_and_stats, 'pe
                                                                                'slope_linregress',
                                                                                'r_value',
                                                                                'p_value'],
-                                                                save=True,
+                                                                save=False,
                                                                 directory_to_save_to='verification')
 
 mCherry_tiled = cf.tile_from_mask(analysis, 'per_cell', 'max_mCherry')
@@ -78,14 +79,14 @@ mCherry_2_tiled = cf.tile_from_mask(mCherry_tiled, 'per_cell', 'mCherry_cutoff')
 
 mCherry_cutoff_tiled = cf.tile_from_mask(mCherry_2_tiled, 'per_cell', 'mCherry_cutoff')
 
-max_mCherry_orig = cf.max_projection(mCherry_cutoff_tiled, in_channel='mCherry', out_channel='max_mCherry_orig')
+max_mCherry_orig = wf.max_projection(mCherry_cutoff_tiled, in_channel='mCherry', out_channel='max_mCherry_orig')
 
 render = rdr.Kristen_image_render(max_mCherry_orig, in_channel = ['name pattern',
                                                                   'max_mCherry_binary',
                                                                   'max_mCherry_orig',
                                                                   'mCherry_cutoff'],
                                                     out_channel='_',
-                                                    save=True,
+                                                    save=False,
                                                     directory_to_save_to='verification')
 
 write_csv = rdr.Kristen_write_to_csv(render,

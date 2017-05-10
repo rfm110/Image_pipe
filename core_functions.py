@@ -24,17 +24,11 @@ from functools import wraps
 import types
 import collections
 import debug_renders as dbg
-
+import wrappers as w
 
 dtype2bits = {'uint8': 8,
               'uint16': 16,
               'uint32': 32}
-
-
-def safe_dir_create(path):
-    if not os.path.isdir(path):
-        os.makedirs(path)
-
 
 class PipeArgError(ValueError):
     pass
@@ -46,148 +40,12 @@ def pad_skipping_iterator(secondary_namespace):
             yield value
 
 
-def doublewrap(f):
-    """
-    a decorator decorator, allowing the decorator to be used as:
-    @decorator(with, arguments, and=kwargs)
-    or
-    @decorator
-
-    credits: http://stackoverflow.com/questions/653368/how-to-create-a-python-decorator-that-can-be-used-either-with-or-without-paramet
-
-    """
-    @wraps(f)
-    def new_dec(*args, **kwargs):
-        if len(args) == 1 and len(kwargs) == 0 and callable(args[0]):
-            # actual decorated function
-            return f(args[0])
-        else:
-            # decorator arguments
-            return lambda realf: f(realf, *args, **kwargs)
-
-    return new_dec
-
-
-def list_not_string(argument):
-    """
-    function that checks if a list is not a string
-
-    credits: http://stackoverflow.com/questions/1055360/how-to-tell-a-variable-is-iterable-but-not-a-string
-
-    :param argument:
-    :return:
-    """
-    if isinstance(argument, collections.Iterable):
-        if isinstance(argument, types.StringTypes):
-            return False
-        else:
-            return True
-    else:
-        raise PipeArgError("Expected a name of channel or list of names. Found: '%s' " % argument)
 
 
 # TODO: add vectorization (same operation for every element in the inputs - smoothing, stabilization)
 #   - strategy pattern
+#
 
-@doublewrap
-def generator_wrapper(f, in_dims=(3,), out_dims=None):
-
-    if out_dims is None:
-            out_dims = in_dims
-
-    @wraps(f)
-    def inner_wrapper(*args, **kwargs):
-        """
-        converts a function to accepting a generator of named dicts and adds channel selection logic
-        """
-
-        iterator = args[0]
-        args = args[1:]
-
-        if 'in_channel' in kwargs:
-            #Start in/out channel logic
-
-            in_chan = kwargs['in_channel']  # Multiple arguments
-            del kwargs['in_channel']
-
-            if not list_not_string(in_chan):  # convert string to list of strings
-                in_chan = [in_chan]
-
-            if 'out_channel' in kwargs:
-                out_chan = kwargs['out_channel']  # output explicitely provided
-                del kwargs['out_channel']
-                if not list_not_string(out_chan):  # convert string to list of strings
-                    out_chan = [out_chan]
-
-            else:  # implicit output, bound to in_channel only if a single input is provided
-                if len(in_chan) == 1:
-                    print 'Input %s will be overwritten by function %s' % (in_chan[0], f.__name__)
-                    out_chan = in_chan
-                else:
-                    print f.__name__
-                    print in_chan, in_dims
-                    raise PipeArgError('Please provide out_channel argument')
-
-            if len(in_chan) != len(in_dims):
-                print f.__name__
-                print in_chan, in_dims
-                print len(in_chan), len(in_dims)
-                raise PipeArgError('%s inbound channels are piped, function allows %s' %
-                                   (len(in_chan), len(in_dims)))
-
-            if len(out_chan) != len(out_dims):
-                print f.__name__
-                print out_chan, out_dims
-                print len(out_chan), len(out_dims)
-                raise PipeArgError('%s outbound channels are piped, function allows %s' %
-                                   (len(out_chan), len(out_dims)))
-            # end in/out channel logic
-
-            for name_space in iterator:
-                # start args prepare
-                args_puck = []
-
-                for i, chan in enumerate(in_chan):
-                    if in_dims[i] and len(name_space[chan].shape) != in_dims[i]:
-                        print f.__name__
-                        print chan, len(name_space[chan].shape), in_dims[i]
-                        raise PipeArgError('Mismatched inbound channel dimension for channel. %s is of dim %s, expected %s'%
-                                           (chan, len(name_space[chan].shape), in_dims[i]))
-                    # print name_space.keys()
-                    args_puck.append(name_space[chan])
-
-                local_args = tuple(args_puck) + args
-                # end args prepare
-                return_puck = f(*local_args, **kwargs)
-
-                if return_puck is None and out_chan[0] == '_':
-                    yield name_space  # unlike return, yield is probably non-blocking....
-
-                else:
-                    # start output prepare
-                    if not isinstance(return_puck, tuple):
-                        return_puck = (return_puck, )
-
-                    for i, chan in enumerate(out_chan):
-                        if out_dims[i] and len(return_puck[i].shape) != out_dims[i]:
-                            print f.__name__
-                            print chan
-                            raise PipeArgError('Mismatched outgoing channel dimension for channel. %s is of dim %s, expected %s' %
-                                               (chan, len(return_puck[i].shape), out_dims[i]))
-                        if chan != '_':
-                            name_space[chan] = return_puck[i]
-                    # end output prepare
-
-                    yield name_space
-
-        else:
-            for name_space in iterator:
-
-                local_args = (name_space,) + args
-                name_space = f(*local_args, **kwargs)
-                yield name_space
-
-    return inner_wrapper
 
 
 def splitter(outer_generator, to, sources, mask):
@@ -320,7 +178,6 @@ def _2d_stack_2d_filter(_2d_stack, _2d_filter):
     return new_stack
 
 
-@generator_wrapper(in_dims=(None,))
 def gamma_stabilize(current_image, alpha_clean=5, min='min'):
     bits = dtype2bits[current_image.dtype.name]
     if min == 'min':
@@ -337,18 +194,16 @@ def gamma_stabilize(current_image, alpha_clean=5, min='min'):
     stabilized[stabilized < alpha_clean*np.median(stabilized)] = 0
     return stabilized
 
-
-@generator_wrapper
+# @generator_wrapper
 def smooth(current_image, smoothing_px=1.5):
     for i in range(0, current_image.shape[0]):
         current_image[i, :, :] = gaussian_filter(current_image[i, :, :],
                                                  smoothing_px, mode='constant')
         current_image[current_image < 5*np.mean(current_image)] = 0
     return current_image
-
 # original: in dims below = 2
 # maybe not set dims and covert to 2 dims
-@generator_wrapper(in_dims=(2,))
+# @generator_wrapper(in_dims=(2,))
 def smooth_2d(current_image, smoothing_px=1.5):
     # if np.shape(current_image) == (3,3):
     #     current_image = np.max(current_image, axis = 0)
@@ -357,22 +212,20 @@ def smooth_2d(current_image, smoothing_px=1.5):
     # dbg.max_projection_debug(np.max(current_image, axis=0))
     return current_image
 
-
-@generator_wrapper(in_dims=(3,), out_dims=(2,))
+# @generator_wrapper(in_dims=(3,), out_dims=(2,))
 def sum_projection(current_image):
     # dbg.max_projection_debug(np.max(current_image, axis=0))
     # dbg.sum_proj_debug(np.sum(current_image, axis=0))
     return np.sum(current_image, axis=0)
 
 
-@generator_wrapper(in_dims=(3,), out_dims=(2,))
+# @generator_wrapper(in_dims=(3,), out_dims=(2,))
 def max_projection(current_image):
     # dbg.max_projection_debug(np.max(current_image, axis=0))
 
     return np.max(current_image, axis=0)
 
-
-@generator_wrapper(in_dims=(2,))
+# @generator_wrapper(in_dims=(2,))
 def random_walker_binarize(base_image, _dilation=0):
     gfp_clustering_markers = np.zeros(base_image.shape, dtype=np.uint8)
 
@@ -389,9 +242,8 @@ def random_walker_binarize(base_image, _dilation=0):
 
     return binary_labels
 
-
 # To try: multiscale percentile edge finding.
-@generator_wrapper(in_dims=(2,), out_dims=(2,))
+# @generator_wrapper(in_dims=(2,), out_dims=(2,))
 def robust_binarize(base_image, _dilation=0, heterogeity_size=10, feature_size=50):
 
     if np.percentile(base_image, 99) < 0.20:
@@ -401,6 +253,7 @@ def robust_binarize(base_image, _dilation=0, heterogeity_size=10, feature_size=5
             mult = 1000. / np.sum(base_image)
         base_image = base_image * mult
         base_image[base_image > 1] = 1
+
 
 
     clustering_markers = np.zeros(base_image.shape, dtype=np.uint8)
@@ -435,8 +288,7 @@ def robust_binarize(base_image, _dilation=0, heterogeity_size=10, feature_size=5
     # dbg.Kristen_robust_binarize(binary_labels, base_image)
     return binary_labels
 
-
-@generator_wrapper(in_dims=(2,))
+# @generator_wrapper(in_dims=(2,))
 def voronoi_segment_labels(binary_labels):
 
     dist = ndi.morphology.distance_transform_edt(np.logical_not(binary_labels))
@@ -445,8 +297,7 @@ def voronoi_segment_labels(binary_labels):
 
     return segmented_cells_labels
 
-
-@generator_wrapper(in_dims=(2, 2), out_dims=(2,))
+# @generator_wrapper(in_dims=(2, 2), out_dims=(2,))
 def filter_labels(labels, binary_mask, min_feature_size=10):
     binary_mask = binary_mask.astype(np.bool)
 
@@ -474,8 +325,7 @@ def filter_labels(labels, binary_mask, min_feature_size=10):
 
     return filtered_labels
 
-
-@generator_wrapper(in_dims=(2, 2), out_dims=(2,))
+# @generator_wrapper(in_dims=(2, 2), out_dims=(2,))
 def exclude_region(exclusion_mask, field, _dilation=5):
     _exclusion_mask = np.zeros_like(exclusion_mask)
     _exclusion_mask[exclusion_mask > 0] = 1
@@ -489,8 +339,7 @@ def exclude_region(exclusion_mask, field, _dilation=5):
 
     return excluded
 
-
-@generator_wrapper(in_dims=(2, 2))
+# @generator_wrapper(in_dims=(2, 2))
 def in_contact(mask1, mask2, distance=10):
 
     selem = disk(distance)
@@ -519,8 +368,7 @@ def in_contact(mask1, mask2, distance=10):
     print 'in contact 2', in_contact2
     return in_contact1, in_contact2
 
-
-@generator_wrapper(in_dims=(2, 2), out_dims=(2,))
+# @generator_wrapper(in_dims=(2, 2), out_dims=(2,))
 def improved_watershed(binary_base, intensity, expected_separation=10):
     sel_elem = disk(2)
 
@@ -557,8 +405,7 @@ def improved_watershed(binary_base, intensity, expected_separation=10):
     # dbg.improved_watershed_plot_intensities(x_labels, average_apply_mask_list.sort())
     return segmented_cells_labels
 
-
-@generator_wrapper(in_dims=(2, 2,), out_dims=(2,))
+# @generator_wrapper(in_dims=(2, 2,), out_dims=(2,))
 def label_and_correct(binary_channel, value_channel, min_px_radius=3, min_intensity=0, mean_diff=10):
     labeled_field, object_no = ndi.label(binary_channel, structure=np.ones((3, 3)))
     background_mean = np.mean(value_channel[labeled_field == 0])
@@ -573,13 +420,11 @@ def label_and_correct(binary_channel, value_channel, min_px_radius=3, min_intens
     # dbg.label_and_correct_debug(labeled_field)
     return labeled_field
 
-
-@generator_wrapper(in_dims=(2,))
+# @generator_wrapper(in_dims=(2,))
 def qualifying_gfp(max_sum_projection):
     return max_sum_projection > 0
 
-
-@generator_wrapper(in_dims=(2, 2), out_dims=(1, 2))
+# @generator_wrapper(in_dims=(2, 2), out_dims=(1, 2))
 def label_based_aq(labels, field_of_interest):
     average_list = []
     average_pad = np.zeros_like(labels).astype(np.float32)
@@ -604,8 +449,7 @@ def label_based_aq(labels, field_of_interest):
 
     return np.array(average_list), average_pad
 
-
-@generator_wrapper(in_dims=(2, 2, 2), out_dims=(1, 2))
+# @generator_wrapper(in_dims=(2, 2, 2), out_dims=(1, 2))
 def aq_gfp_per_region(cell_labels, max_sum_projection, qualifying_gfp_mask):
 
     cells_average_gfp_list = []
@@ -627,7 +471,7 @@ def aq_gfp_per_region(cell_labels, max_sum_projection, qualifying_gfp_mask):
     return np.array(cells_average_gfp_list), average_gfp_pad
 
 
-@generator_wrapper(in_dims=(1,), out_dims=(1, 1, None))
+# @generator_wrapper(in_dims=(1,), out_dims=(1, 1, None))
 def detect_upper_outliers(cells_average_gfp_list):
     arg_sort = np.argsort(np.array(cells_average_gfp_list))
     cells_average_gfp_list = sorted(cells_average_gfp_list)
@@ -648,8 +492,7 @@ def detect_upper_outliers(cells_average_gfp_list):
                                                  np.array(cells_average_gfp_list)]]
     return non_outliers, predicted_average_gfp, std_err
 
-
-@generator_wrapper(in_dims=(2, 1), out_dims=(2,))
+# @generator_wrapper(in_dims=(2, 1), out_dims=(2,))
 def paint_mask(label_masks, labels_to_paint):
 
     #label mask is GFP upper outlier cells
@@ -661,47 +504,41 @@ def paint_mask(label_masks, labels_to_paint):
             mask_to_paint[label_masks == idx + 1] = 1  # indexing starts from 1, not 0 for the labels
     return mask_to_paint
 
-
-@generator_wrapper(in_dims=(2, 2), out_dims=(2,))
+# @generator_wrapper(in_dims=(2, 2), out_dims=(2,))
 def mask_filter_2d(base, _filter):
     ret_val = np.zeros_like(base)
     ret_val[_filter.astype(np.bool)] = base[_filter.astype(np.bool)]
 
     return ret_val
 
-
-@generator_wrapper(in_dims=(3, 2), out_dims=(3,))
+# @generator_wrapper(in_dims=(3, 2), out_dims=(3,))
 def clear_based_on_2d_mask(stack, mask):
     return _3d_stack_2d_filter(stack, np.logical_not(mask))
 
-
-@generator_wrapper
+# @generator_wrapper
 def binarize_3d(float_volume, mcc_cutoff):
     binary_volume = np.zeros_like(float_volume)
     binary_volume[float_volume > mcc_cutoff] = 1
     return binary_volume.astype(np.bool)
 
-
-@generator_wrapper(in_dims=(3, 3), out_dims=(None,))
+# @generator_wrapper(in_dims=(3, 3), out_dims=(None,))
 def volume_mqvi(float_volume, binary_volume):
     m_q_v_i = np.median(float_volume[binary_volume])
     return m_q_v_i
 
-
-@generator_wrapper(in_dims=(3, 3), out_dims=(None,))
+# @generator_wrapper(in_dims=(3, 3), out_dims=(None,))
 def volume_aqvi(float_volume, binary_volume):
     a_q_v_i = np.mean(float_volume[binary_volume])
     return a_q_v_i
 
-@generator_wrapper(in_dims=(3, 2), out_dims=(3,))
+# @generator_wrapper(in_dims=(3, 2), out_dims=(3,))
 def _3d_mask_from_2d_mask(shape_base, _2d_labels):
     otsu = threshold_otsu(shape_base)
     ret_val = shape_base > otsu
     ret_val = ret_val.astype(np.bool)
     return ret_val
 
-
-@generator_wrapper(in_dims=(2,), out_dims=(2,))
+# @generator_wrapper(in_dims=(2,), out_dims=(2,))
 def binarize_2d(float_surface, cutoff_type='static', mcc_cutoff=None):
     if cutoff_type == 'otsu':
         mcc_cutoff = threshold_otsu(float_surface)
@@ -724,8 +561,7 @@ def binarize_2d(float_surface, cutoff_type='static', mcc_cutoff=None):
 
     return binary_stack
 
-
-@generator_wrapper(in_dims=(2, 2), out_dims=(2,))
+# @generator_wrapper(in_dims=(2, 2), out_dims=(2,))
 def agreeing_skeletons(float_surface, mito_labels):
     topological_skeleton = skeletonize(mito_labels)
 
@@ -751,8 +587,7 @@ def agreeing_skeletons(float_surface, mito_labels):
     # dbg.skeleton_debug(float_surface, mito_labels, skeletons)
     return skeletons
 
-
-@generator_wrapper(in_dims=(2, 2), out_dims=(None, 2, 2, 2))
+# @generator_wrapper(in_dims=(2, 2), out_dims=(None, 2, 2, 2))
 def classify_fragmentation_for_mitochondria(label_mask, skeletons):
     # what if no mitochondria currently found?
     # what if we want to compare the surface of fragmented mitochondria v.s. non-fragmented ones?
@@ -794,8 +629,7 @@ def classify_fragmentation_for_mitochondria(label_mask, skeletons):
 
     return final_classification, classification_mask, radius_mask, support_mask
 
-
-@generator_wrapper(in_dims=(3,), out_dims=(3,))
+# @generator_wrapper(in_dims=(3,), out_dims=(3,))
 def locally_normalize(channel, local_xy_pool=5, local_z_pool=2):
     selem = disk(local_xy_pool)
 
@@ -824,4 +658,3 @@ def locally_normalize(channel, local_xy_pool=5, local_z_pool=2):
         new_slice_collector.append(new_slice.astype(np.float)/2.**8)
 
     return np.array(new_slice_collector)
-

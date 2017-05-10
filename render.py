@@ -1,7 +1,7 @@
 import os
 import numpy as np
 from matplotlib import pyplot as plt
-from core_functions import generator_wrapper, safe_dir_create
+from wrappers import generator_wrapper, safe_dir_create
 from csv import writer as csv_writer
 from csv import DictWriter
 import scipy

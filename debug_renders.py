@@ -3,7 +3,7 @@ import numpy as np
 from scipy import histogram2d
 from core_functions import watershed
 from scipy import ndimage as ndi
-# my addition to imports: watershed, ndi
+
 
 def robust_binarize_debug(base, smooth, median, otsu, labels, binary, u_median, u_otsu):
     plt.figure(figsize=(20.0, 15.0))
