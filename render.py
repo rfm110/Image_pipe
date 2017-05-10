@@ -12,6 +12,7 @@ import core_functions as cf
 from chiffatools.dataviz import better2D_desisty_plot
 from scipy.stats import linregress
 import debug_renders as dbg
+import pickle
 
 
 @generator_wrapper(in_dims=(None, 2, 2, 2, 2, 1, 1, None, None, 2, 2), out_dims=(None,))
@@ -404,6 +405,12 @@ def Kristen_image_render(name_pattern,
     plt.subplot(133,sharex=main_ax, sharey=main_ax)
     plt.title('mCherry-cutoff applied')
     plt.imshow(mCherry_cutoff, interpolation='nearest')
+
+    # TODO: pickle output image-for unittesting
+    # pickle here for expected output?
+    pickled_output = open('pickled_output.p')
+    output = plt.savefig('pickled_output')
+    output = pickle.load(pickled_output)
 
 
     if not save:

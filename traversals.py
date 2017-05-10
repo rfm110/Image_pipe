@@ -33,9 +33,7 @@ def Linhao_traverse(main_root,
     """
     Traverses the main_root directory, looking for all the '.tif/.TIF' files, performs name matching
     then iterates through the resulting matched dictironary.
-
     Matching assumption is that except for the matching keys, the names are identical
-
     :param main_root: folder from which will be traversed in depth
     :param matching_rule: name modification to type mapping. Currently '' for no matching, 'color' for colors
     :param matching_map: {'pattern in the file name': color channel number}
@@ -153,7 +151,6 @@ def Linhao_traverse(main_root,
 def name_channels(stack_group_generator, channel_names):
     """
     Assigns names to the channel for the future processing and bundles them together
-
     :param stack_group_generator:
     :param channel_names:
     :return:
@@ -196,9 +193,7 @@ def xi_traverse(main_root, matching_map=None):
     """
     Traverses the main_root directory, looking for all the '.tif/.TIF' files, performs name matching
     then iterates through the resulting matched dictironary.
-
     Matching assumption is that except for the matching keys, the names are identical
-
     :param main_root: folder from which will be traversed in depth
     :param matching_rule: name modification to type mapping. Currently '' for no matching, 'color' for colors
     :param matching_map: {'pattern in the file name': color channel number}
@@ -334,4 +329,3 @@ def Kristen_yield(matched_images):
 
         yield name_pattern, matched_images, channels
         row[3] = 1
-
