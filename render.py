@@ -407,10 +407,10 @@ def Kristen_image_render(name_pattern,
     plt.imshow(mCherry_cutoff, interpolation='nearest')
 
     # TODO: pickle output image for unittesting
-    # pickle here for expected output?
-    pickled_output = open('pickled_output.p')
-    output = plt.savefig('pickled_output')
-    output = pickle.load(pickled_output)
+    # # pickle here for expected output?
+    # pickled_output = open('pickled_output.p')
+    # output = plt.savefig('pickled_output')
+    # output = pickle.load(pickled_output)
 
 
     if not save:

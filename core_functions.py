@@ -194,7 +194,6 @@ def gamma_stabilize(current_image, alpha_clean=5, min='min'):
     stabilized[stabilized < alpha_clean*np.median(stabilized)] = 0
     return stabilized
 
-# @generator_wrapper
 def smooth(current_image, smoothing_px=1.5):
     for i in range(0, current_image.shape[0]):
         current_image[i, :, :] = gaussian_filter(current_image[i, :, :],
@@ -203,7 +202,6 @@ def smooth(current_image, smoothing_px=1.5):
     return current_image
 # original: in dims below = 2
 # maybe not set dims and covert to 2 dims
-# @generator_wrapper(in_dims=(2,))
 def smooth_2d(current_image, smoothing_px=1.5):
     # if np.shape(current_image) == (3,3):
     #     current_image = np.max(current_image, axis = 0)
@@ -212,20 +210,17 @@ def smooth_2d(current_image, smoothing_px=1.5):
     # dbg.max_projection_debug(np.max(current_image, axis=0))
     return current_image
 
-# @generator_wrapper(in_dims=(3,), out_dims=(2,))
 def sum_projection(current_image):
     # dbg.max_projection_debug(np.max(current_image, axis=0))
     # dbg.sum_proj_debug(np.sum(current_image, axis=0))
     return np.sum(current_image, axis=0)
 
 
-# @generator_wrapper(in_dims=(3,), out_dims=(2,))
 def max_projection(current_image):
     # dbg.max_projection_debug(np.max(current_image, axis=0))
 
     return np.max(current_image, axis=0)
 
-# @generator_wrapper(in_dims=(2,))
 def random_walker_binarize(base_image, _dilation=0):
     gfp_clustering_markers = np.zeros(base_image.shape, dtype=np.uint8)
 
@@ -243,7 +238,6 @@ def random_walker_binarize(base_image, _dilation=0):
     return binary_labels
 
 # To try: multiscale percentile edge finding.
-# @generator_wrapper(in_dims=(2,), out_dims=(2,))
 def robust_binarize(base_image, _dilation=0, heterogeity_size=10, feature_size=50):
 
     if np.percentile(base_image, 99) < 0.20:
@@ -288,7 +282,7 @@ def robust_binarize(base_image, _dilation=0, heterogeity_size=10, feature_size=5
     # dbg.Kristen_robust_binarize(binary_labels, base_image)
     return binary_labels
 
-# @generator_wrapper(in_dims=(2,))
+
 def voronoi_segment_labels(binary_labels):
 
     dist = ndi.morphology.distance_transform_edt(np.logical_not(binary_labels))
@@ -297,7 +291,6 @@ def voronoi_segment_labels(binary_labels):
 
     return segmented_cells_labels
 
-# @generator_wrapper(in_dims=(2, 2), out_dims=(2,))
 def filter_labels(labels, binary_mask, min_feature_size=10):
     binary_mask = binary_mask.astype(np.bool)
 
@@ -325,7 +318,6 @@ def filter_labels(labels, binary_mask, min_feature_size=10):
 
     return filtered_labels
 
-# @generator_wrapper(in_dims=(2, 2), out_dims=(2,))
 def exclude_region(exclusion_mask, field, _dilation=5):
     _exclusion_mask = np.zeros_like(exclusion_mask)
     _exclusion_mask[exclusion_mask > 0] = 1
@@ -339,7 +331,6 @@ def exclude_region(exclusion_mask, field, _dilation=5):
 
     return excluded
 
-# @generator_wrapper(in_dims=(2, 2))
 def in_contact(mask1, mask2, distance=10):
 
     selem = disk(distance)
@@ -368,7 +359,6 @@ def in_contact(mask1, mask2, distance=10):
     print 'in contact 2', in_contact2
     return in_contact1, in_contact2
 
-# @generator_wrapper(in_dims=(2, 2), out_dims=(2,))
 def improved_watershed(binary_base, intensity, expected_separation=10):
     sel_elem = disk(2)
 
@@ -405,7 +395,6 @@ def improved_watershed(binary_base, intensity, expected_separation=10):
     # dbg.improved_watershed_plot_intensities(x_labels, average_apply_mask_list.sort())
     return segmented_cells_labels
 
-# @generator_wrapper(in_dims=(2, 2,), out_dims=(2,))
 def label_and_correct(binary_channel, value_channel, min_px_radius=3, min_intensity=0, mean_diff=10):
     labeled_field, object_no = ndi.label(binary_channel, structure=np.ones((3, 3)))
     background_mean = np.mean(value_channel[labeled_field == 0])
@@ -420,11 +409,9 @@ def label_and_correct(binary_channel, value_channel, min_px_radius=3, min_intens
     # dbg.label_and_correct_debug(labeled_field)
     return labeled_field
 
-# @generator_wrapper(in_dims=(2,))
 def qualifying_gfp(max_sum_projection):
     return max_sum_projection > 0
 
-# @generator_wrapper(in_dims=(2, 2), out_dims=(1, 2))
 def label_based_aq(labels, field_of_interest):
     average_list = []
     average_pad = np.zeros_like(labels).astype(np.float32)
@@ -449,7 +436,6 @@ def label_based_aq(labels, field_of_interest):
 
     return np.array(average_list), average_pad
 
-# @generator_wrapper(in_dims=(2, 2, 2), out_dims=(1, 2))
 def aq_gfp_per_region(cell_labels, max_sum_projection, qualifying_gfp_mask):
 
     cells_average_gfp_list = []
@@ -471,7 +457,6 @@ def aq_gfp_per_region(cell_labels, max_sum_projection, qualifying_gfp_mask):
     return np.array(cells_average_gfp_list), average_gfp_pad
 
 
-# @generator_wrapper(in_dims=(1,), out_dims=(1, 1, None))
 def detect_upper_outliers(cells_average_gfp_list):
     arg_sort = np.argsort(np.array(cells_average_gfp_list))
     cells_average_gfp_list = sorted(cells_average_gfp_list)
@@ -492,7 +477,6 @@ def detect_upper_outliers(cells_average_gfp_list):
                                                  np.array(cells_average_gfp_list)]]
     return non_outliers, predicted_average_gfp, std_err
 
-# @generator_wrapper(in_dims=(2, 1), out_dims=(2,))
 def paint_mask(label_masks, labels_to_paint):
 
     #label mask is GFP upper outlier cells
@@ -504,41 +488,34 @@ def paint_mask(label_masks, labels_to_paint):
             mask_to_paint[label_masks == idx + 1] = 1  # indexing starts from 1, not 0 for the labels
     return mask_to_paint
 
-# @generator_wrapper(in_dims=(2, 2), out_dims=(2,))
 def mask_filter_2d(base, _filter):
     ret_val = np.zeros_like(base)
     ret_val[_filter.astype(np.bool)] = base[_filter.astype(np.bool)]
 
     return ret_val
 
-# @generator_wrapper(in_dims=(3, 2), out_dims=(3,))
 def clear_based_on_2d_mask(stack, mask):
     return _3d_stack_2d_filter(stack, np.logical_not(mask))
 
-# @generator_wrapper
 def binarize_3d(float_volume, mcc_cutoff):
     binary_volume = np.zeros_like(float_volume)
     binary_volume[float_volume > mcc_cutoff] = 1
     return binary_volume.astype(np.bool)
 
-# @generator_wrapper(in_dims=(3, 3), out_dims=(None,))
 def volume_mqvi(float_volume, binary_volume):
     m_q_v_i = np.median(float_volume[binary_volume])
     return m_q_v_i
 
-# @generator_wrapper(in_dims=(3, 3), out_dims=(None,))
 def volume_aqvi(float_volume, binary_volume):
     a_q_v_i = np.mean(float_volume[binary_volume])
     return a_q_v_i
 
-# @generator_wrapper(in_dims=(3, 2), out_dims=(3,))
 def _3d_mask_from_2d_mask(shape_base, _2d_labels):
     otsu = threshold_otsu(shape_base)
     ret_val = shape_base > otsu
     ret_val = ret_val.astype(np.bool)
     return ret_val
 
-# @generator_wrapper(in_dims=(2,), out_dims=(2,))
 def binarize_2d(float_surface, cutoff_type='static', mcc_cutoff=None):
     if cutoff_type == 'otsu':
         mcc_cutoff = threshold_otsu(float_surface)
@@ -561,7 +538,6 @@ def binarize_2d(float_surface, cutoff_type='static', mcc_cutoff=None):
 
     return binary_stack
 
-# @generator_wrapper(in_dims=(2, 2), out_dims=(2,))
 def agreeing_skeletons(float_surface, mito_labels):
     topological_skeleton = skeletonize(mito_labels)
 
@@ -587,7 +563,6 @@ def agreeing_skeletons(float_surface, mito_labels):
     # dbg.skeleton_debug(float_surface, mito_labels, skeletons)
     return skeletons
 
-# @generator_wrapper(in_dims=(2, 2), out_dims=(None, 2, 2, 2))
 def classify_fragmentation_for_mitochondria(label_mask, skeletons):
     # what if no mitochondria currently found?
     # what if we want to compare the surface of fragmented mitochondria v.s. non-fragmented ones?
@@ -629,7 +604,6 @@ def classify_fragmentation_for_mitochondria(label_mask, skeletons):
 
     return final_classification, classification_mask, radius_mask, support_mask
 
-# @generator_wrapper(in_dims=(3,), out_dims=(3,))
 def locally_normalize(channel, local_xy_pool=5, local_z_pool=2):
     selem = disk(local_xy_pool)
 
